@@ -21,6 +21,7 @@ int main(int argc, char *argv[]){
 
     /***OFFSETS***/
     unsigned int offset_led[1] = {LED_PIN};
+    enum gpiod_line_value initial_state_offset_led[1] = {GPIOD_LINE_VALUE_INACTIVE};
 
     /***CHIP***/    
     chip = gpiod_chip_open(CHIP_PATH);  // Note 1
@@ -79,6 +80,15 @@ int main(int argc, char *argv[]){
     aux = gpiod_line_config_add_line_settings(lines_config, offset_led, 1, line_led_settings);
     if(aux < 0){
         perror("An error occurred: function 'gpiod_line_config_add_line_settings' return -1");
+        gpiod_line_config_free(lines_config);
+        gpiod_line_settings_free(line_led_settings);
+        gpiod_request_config_free(request_config);
+        gpiod_chip_close(chip);
+        return 1;
+    }
+    aux = gpiod_line_config_set_output_values(lines_config, initial_state_offset_led, 1);
+    if(aux < 0){
+        perror("An error occurred: function 'gpiod_line_config_set_output_values' return -1");
         gpiod_line_config_free(lines_config);
         gpiod_line_settings_free(line_led_settings);
         gpiod_request_config_free(request_config);
