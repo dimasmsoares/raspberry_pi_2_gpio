@@ -9,13 +9,13 @@ int main(){
     /*STRUCTS*/
     struct gpiod_chip *chip;
     struct gpiod_request_config *req_cfg;
-    struct gpiod_line_settings *in_line_sts, out_line_sts;
+    struct gpiod_line_settings *in_line_sts, *out_line_sts;
     struct gpiod_line_config *lines_cfg;
-    struct gpiod_lines_req *lines_req;
+    struct gpiod_line_request *lines_req;
 
     /*OFFSETS*/
-    unsigned int row_keypad_pins[4] = {2, 3, 4, 17 }    // Phisical -> 3, 5, 7, 11 (INPUT)
-    unsigned int column_keypad_pins[3] = {27, 22, 10}   // Phisical -> 13, 15, 19 (OUTPUT)
+    unsigned int row_keypad_pins[4] = {2, 3, 4, 17 };   // Phisical -> 3, 5, 7, 11 (INPUT)
+    unsigned int column_keypad_pins[3] = {27, 22, 10};  // Phisical -> 13, 15, 19 (OUTPUT)
     enum gpiod_line_value initial_line_value_column[3] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE};
     enum gpiod_line_value line_value_column_1[3] = {GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE};
     enum gpiod_line_value line_value_column_2[3] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE};
@@ -49,7 +49,7 @@ int main(){
 
     /*LOOP*/
     while(1){
-
+	
     }
 
     return 0;
