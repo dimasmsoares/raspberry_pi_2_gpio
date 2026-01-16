@@ -31,6 +31,7 @@ int main(int argc, char *argv[]){
     struct gpiod_edge_event_buffer *buffer;
     struct gpiod_edge_event *event;
 
+    /*DISPLAY*/
     const enum gpiod_line_value bcd0[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE};
     const enum gpiod_line_value bcd1[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE};
     const enum gpiod_line_value bcd2[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE};
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
-    printf("btns_line_settings ok\n");
+    printf("BTNS_LINE_SETTINGS ok\n");
 
     aux = gpiod_line_settings_set_direction(btns_line_settings, GPIOD_LINE_DIRECTION_INPUT);
     if(aux < 0){
@@ -82,7 +83,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
-    printf("btns_line_settings --> INPUT ok\n");
+    printf("\t- BTNS_LINE_SETTINGS --> INPUT ok\n");
 
     aux = gpiod_line_settings_set_bias(btns_line_settings, GPIOD_LINE_BIAS_PULL_UP);
     if(aux < 0){
@@ -92,7 +93,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
-    printf("btns_line_settings --> PULL_UP ok\n");
+    printf("\t- BTNS_LINE_SETTINGS --> PULL_UP ok\n");
 
     aux = gpiod_line_settings_set_edge_detection(btns_line_settings, GPIOD_LINE_EDGE_FALLING);
     if(aux < 0){
@@ -102,7 +103,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
-    printf("btns_line_settings --> EDGE_FALLING ok\n");
+    printf("\t- BTNS_LINE_SETTINGS --> EDGE_FALLING ok\n");
 
     // 2) GPIOs como saída (BCD para o CI 4511)
     bcd_line_settings = gpiod_line_settings_new();
@@ -113,7 +114,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
-    printf("bcd_line_settings ok\n");
+    printf("\t- BCD_LINE_SETTINGS ok\n");
 
     aux = gpiod_line_settings_set_direction(bcd_line_settings, GPIOD_LINE_DIRECTION_OUTPUT);
     if(aux < 0){
@@ -124,7 +125,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
-    printf("bcd_line_settings --> OUTPUT ok\n");
+    printf("\t- BCD_LINE_SETTINGS --> OUTPUT ok\n");
     
     /*LINE CONFIG*/
     l_config = gpiod_line_config_new();
@@ -136,6 +137,8 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
+    printf("L_CONFIG ok\n");
+
     aux = gpiod_line_config_add_line_settings(l_config, btns_offset, 3, btns_line_settings);
     if(aux < 0){
         perror("Function'gpiod_line_config_add_line_settings' failed");
@@ -146,6 +149,8 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
+    printf("\t- L_CONFIG added BTNS_LINE_SETTINGS ok\n");
+
     aux = gpiod_line_config_add_line_settings(l_config, bcd_offset, 4, bcd_line_settings);
     if(aux < 0){
         perror("Function'gpiod_line_config_add_line_settings' failed");
@@ -156,6 +161,8 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
+    printf("\t- L_CONFIG added BCD_LINE_SETTINGS ok\n");
+
     aux = gpiod_line_config_set_output_values(l_config, bcd0, 4);
     if(aux < 0){
         perror("Function'gpiod_line_config_set_output_values' failed");
@@ -166,6 +173,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
+    printf("\t- BCD_LINE set to bcd0 ok\n");
 
     /*LINE REQUEST*/
     l_request = gpiod_chip_request_lines(chip, r_config, l_config);
@@ -178,6 +186,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
+    printf("\t- LINE_REQUEST ok\n");
 
     /*EVENT*/
     buffer = gpiod_edge_event_buffer_new(1);
@@ -190,6 +199,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);
         return 1;
     }
+    printf("\t- BUFFER ok\n");
 
     int display_value = 0;
     /*LOOP*/
@@ -219,7 +229,6 @@ int main(int argc, char *argv[]){
             gpiod_chip_close(chip);
             return 1;
         }
-        printf("EVENTO DETECTADO\n");
         // Processando o evento
         event = gpiod_edge_event_buffer_get_event(buffer, 0);   // Acessa o evento que está no buffer e o coloca em 'event'
         unsigned int offset = gpiod_edge_event_get_line_offset(event);  // Ver de qual line ele se origina
