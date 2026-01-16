@@ -15,6 +15,7 @@ int main(int argc, char *argv[]){
     struct gpiod_line_config *l_config;
     struct gpiod_line_request *l_request;
     struct gpiod_edge_event_buffer *event_buffer;
+    struct gpiod_edge_event *event
 
     /*OFFSET*/
     unsigned int row_offset[4] = {};
@@ -22,6 +23,7 @@ int main(int argc, char *argv[]){
 
     /*ENUM*/
     const enum gpiod_line_value row_initial_values[4] = {GPIO_LINE_VALUE_INACTIVE, GPIO_LINE_VALUE_INACTIVE, GPIO_LINE_VALUE_INACTIVE, GPIO_LINE_VALUE_INACTIVE};
+    enum gpiod_edge_event_type event_type;
 
     /*CHIP*/
     chip = gpiod_chip_open("/dev/gpiochip0");
@@ -72,7 +74,7 @@ int main(int argc, char *argv[]){
     }
     printf("\tINITIAL STATE INACTIVE (LOW) ok\n");
     
-    // COL --> INPUT | PULL_UP | RISING
+    // COL --> INPUT | PULL_UP | FALLING
     col_l_settings = gpiod_line_settings_new();
     if(col_l_settings == NULL){
         perror("Function 'gpiod_line_settings_new' return NULL");
@@ -105,7 +107,7 @@ int main(int argc, char *argv[]){
     }
     printf("\tPULL_UP ok\n");
 
-    aux = gpiod_line_settings_set_edge_detection(col_l_settings, GPIOD_LINE_EDGE_RISING);
+    aux = gpiod_line_settings_set_edge_detection(col_l_settings, GPIOD_LINE_EDGE_FALLING);
     if(aux < 0){
         perror("Function 'gpiod_line_settings_set_edge_detection' failure");
         gpiod_line_settings_free(col_l_settings);
@@ -114,7 +116,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);    
         return 1;
     }
-    printf("\tEDGE_RISING ok\n");
+    printf("\tEDGE_FALLING ok\n");
 
     /*LINE CONFIG*/
     l_config = gpiod_line_config_new();
@@ -192,7 +194,59 @@ int main(int argc, char *argv[]){
     printf("EVENT BUFFER ok\n");
 
     /*LOOP*/
-    
+    while(1){
+        // Espera até um novo evento acontecer no kernel (-1) 
+        aux = gpiod_line_request_wait_edge_events(l_request, -1);
+        if (aux < 0){
+            perror("Function 'gpiod_line_request_wait_edge_events' failure");
+            gpiod_edge_event_buffer_free(event_buffer);
+            gpiod_line_request_release(l_request);
+            gpiod_line_config_free(l_config);
+            gpiod_line_settings_free(col_l_settings);
+            gpiod_line_settings_free(row_l_settings);
+            gpiod_request_config_free(r_config);
+            gpiod_chip_close(chip); 
+            return 1;
+        }
+        
+        // Transfere o evento do kernel para o buffer
+        aux =  gpiod_line_request_read_edge_events(l_request, event_buffer, 1);
+        if (aux < 0){
+            perror("Function 'gpiod_line_request_read_edge_events' failure");
+            gpiod_edge_event_buffer_free(event_buffer);
+            gpiod_line_request_release(l_request);
+            gpiod_line_config_free(l_config);
+            gpiod_line_settings_free(col_l_settings);
+            gpiod_line_settings_free(row_l_settings);
+            gpiod_request_config_free(r_config);
+            gpiod_chip_close(chip); 
+            return 1;
+        }
+
+        // Obtendo o primeiro (e único) processo do buffer
+        event = gpiod_edge_event_buffer_get_event(event_buffer, 0);
+        if (event == NULL){
+            perror("Function 'gpiod_edge_event_buffer_get_event' return NULL");
+            gpiod_edge_event_buffer_free(event_buffer);
+            gpiod_line_request_release(l_request);
+            gpiod_line_config_free(l_config);
+            gpiod_line_settings_free(col_l_settings);
+            gpiod_line_settings_free(row_l_settings);
+            gpiod_request_config_free(r_config);
+            gpiod_chip_close(chip);    
+            return 1;
+        }
+
+        //Processando o evento
+        event_type = gpiod_edge_event_get_event_type(event);
+        if(event_type == GPIOD_EDGE_EVENT_FALLING_EDGE){
+            
+        }
+
+
+
+
+    }
 
     /*FREE*/
     gpiod_edge_event_buffer_free(event_buffer);
