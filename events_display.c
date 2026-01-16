@@ -19,16 +19,20 @@ int main(int argc, char *argv[]){
 
     int aux;
     int count = 0;
-    const unsigned int btns_offset[3] = {2, 3, 4}; //Equvalente aos pinos 3, 5 e 7
+    const unsigned int btns_offset[3] = {2, 3, 4}; // Equivalente aos pinos 3, 5 e 7
+    const unsigned int bcd_offset[4] = {17, 27, 22, 10}; // 11, 13, 15, 19
 
     /*STRUCTS*/
     struct gpiod_chip *chip;
     struct gpiod_request_config *r_config;
     struct gpiod_line_settings *btns_line_settings;
+    struct gpiod_line_settings *bcd_line_settings;
     struct gpiod_line_config *l_config;
     struct gpiod_line_request *l_request;
     struct gpiod_edge_event_buffer *buffer;
     struct gpiod_edge_event *event;
+
+    const enum gpiod_line_value bcd0[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE};
 
     /*CHIP*/
     chip = gpiod_chip_open("/dev/gpiochip0");
@@ -89,11 +93,34 @@ int main(int argc, char *argv[]){
     }
     printf("btns_line_settings --> EDGE_FALLING ok\n");
 
+    // 2) BCD (0 a 9 em BITS)
+    bcd_line_settings = gpiod_line_settings_new();
+    if(bcd_line_settings == NULL){
+        perror("Function'gpiod_line_settings_new' return NULL");
+        gpiod_line_settings_free(btns_line_settings);
+	gpiod_request_config_free(r_config);
+        gpiod_chip_close(chip);
+        return 1;
+    }
+    printf("bcd_line_settings ok\n");
+
+    aux = gpiod_line_settings_set_direction(bcd_line_settings, GPIOD_LINE_DIRECTION_OUTPUT);
+    if(aux < 0){
+        perror("Function'gpiod_line_settings_set_direction' failed");
+        gpiod_line_settings_free(bcd_line_settings);
+	gpiod_line_settings_free(btns_line_settings);
+        gpiod_request_config_free(r_config);
+        gpiod_chip_close(chip);
+        return 1;
+    }
+    printf("bcd_line_settings --> OUTPUT ok\n");
+    
     /*LINE CONFIG*/
     l_config = gpiod_line_config_new();
     if(l_config == NULL){
         perror("Function'gpiod_line_config_new' return NULL");
-        gpiod_line_settings_free(btns_line_settings);
+        gpiod_line_settings_free(bcd_line_settings);
+	gpiod_line_settings_free(btns_line_settings);
         gpiod_request_config_free(r_config);
         gpiod_chip_close(chip);
         return 1;
@@ -102,7 +129,28 @@ int main(int argc, char *argv[]){
     if(aux < 0){
         perror("Function'gpiod_line_config_add_line_settings' failed");
         gpiod_line_config_free(l_config);
-        gpiod_line_settings_free(btns_line_settings);
+        gpiod_line_settings_free(bcd_line_settings);
+	gpiod_line_settings_free(btns_line_settings);
+        gpiod_request_config_free(r_config);
+        gpiod_chip_close(chip);
+        return 1;
+    }
+    aux = gpiod_line_config_add_line_settings(l_config, bcd_offset, 4, bcd_line_settings);
+    if(aux < 0){
+        perror("Function'gpiod_line_config_add_line_settings' failed");
+        gpiod_line_config_free(l_config);
+        gpiod_line_settings_free(bcd_line_settings);
+	gpiod_line_settings_free(btns_line_settings);
+        gpiod_request_config_free(r_config);
+        gpiod_chip_close(chip);
+        return 1;
+    }
+    aux = gpiod_line_config_set_output_values(l_config, bcd0, 4);
+    if(aux < 0){
+        perror("Function'gpiod_line_config_set_output_values' failed");
+        gpiod_line_config_free(l_config);
+        gpiod_line_settings_free(bcd_line_settings);
+	gpiod_line_settings_free(btns_line_settings);
         gpiod_request_config_free(r_config);
         gpiod_chip_close(chip);
         return 1;
@@ -113,6 +161,7 @@ int main(int argc, char *argv[]){
     if(l_request == NULL){
         perror("Function'gpiod_chip_request_lines' return NULL");
         gpiod_line_config_free(l_config);
+	gpiod_line_settings_free(bcd_line_settings);
         gpiod_line_settings_free(btns_line_settings);
         gpiod_request_config_free(r_config);
         gpiod_chip_close(chip);
@@ -124,6 +173,7 @@ int main(int argc, char *argv[]){
     if(buffer == NULL){
         perror("Function'gpiod_edge_event_buffer_new' return NULL");
         gpiod_line_config_free(l_config);
+	gpiod_line_settings_free(bcd_line_settings);
         gpiod_line_settings_free(btns_line_settings);
         gpiod_request_config_free(r_config);
         gpiod_chip_close(chip);
@@ -134,11 +184,13 @@ int main(int argc, char *argv[]){
     /*LOOP*/
     while(count < 10){
         // Espera até um novo evento acontecer no kernel
-        aux = gpiod_line_request_wait_edge_events(l_request, -1);
+        printf("Iteração %d\n", count);
+	aux = gpiod_line_request_wait_edge_events(l_request, -1);
         if(aux < 0){
             perror("Function'gpiod_line_request_wait_edge_events' failed");
             gpiod_edge_event_buffer_free(buffer);
             gpiod_line_config_free(l_config);
+	    gpiod_line_settings_free(bcd_line_settings);
             gpiod_line_settings_free(btns_line_settings);
             gpiod_request_config_free(r_config);
             gpiod_chip_close(chip);
@@ -150,6 +202,7 @@ int main(int argc, char *argv[]){
             perror("Function'gpiod_line_request_read_edge_events' failed");
             gpiod_edge_event_buffer_free(buffer);
             gpiod_line_config_free(l_config);
+	    gpiod_line_settings_free(bcd_line_settings);
             gpiod_line_settings_free(btns_line_settings);
             gpiod_request_config_free(r_config);
             gpiod_chip_close(chip);
@@ -165,7 +218,12 @@ int main(int argc, char *argv[]){
             printf("GPIO %u: FALLING (botão pressionado)\n", offset);
         }
 
-        usleep(200000);  // Debounce
+        usleep(500000);  // Debounce 500ms = 0,5s
+	
+	// Limpar eventuais eventos acumulados
+	while(gpiod_line_request_wait_edge_events(l_request, 0) > 0){
+		gpiod_line_request_read_edge_events(l_request, buffer, 1);
+	}
          
         count ++;
     }
@@ -174,6 +232,7 @@ int main(int argc, char *argv[]){
     gpiod_edge_event_buffer_free(buffer);
     gpiod_line_request_release(l_request);
     gpiod_line_config_free(l_config);
+    gpiod_line_settings_free(bcd_line_settings);
     gpiod_line_settings_free(btns_line_settings);
     gpiod_request_config_free(r_config);
     gpiod_chip_close(chip);
