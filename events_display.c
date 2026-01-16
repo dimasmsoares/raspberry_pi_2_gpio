@@ -18,7 +18,6 @@ int main(int argc, char *argv[]){
     printf("INÍCIO\n");
 
     int aux;
-    int count = 0;
     const unsigned int btns_offset[3] = {2, 3, 4}; // Equivalente aos pinos 3, 5 e 7
     const unsigned int bcd_offset[4] = {17, 27, 22, 10}; // 11, 13, 15, 19
 
@@ -33,6 +32,18 @@ int main(int argc, char *argv[]){
     struct gpiod_edge_event *event;
 
     const enum gpiod_line_value bcd0[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE};
+    const enum gpiod_line_value bcd1[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE};
+    const enum gpiod_line_value bcd2[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE};
+    const enum gpiod_line_value bcd3[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_ACTIVE};
+    const enum gpiod_line_value bcd4[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE};
+    const enum gpiod_line_value bcd5[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE};
+    const enum gpiod_line_value bcd6[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE};
+    const enum gpiod_line_value bcd7[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_ACTIVE};
+    const enum gpiod_line_value bcd8[4] = {GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE};
+    const enum gpiod_line_value bcd9[4] = {GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_ACTIVE};
+
+    const enum gpiod_line_value *bcd[10] = {bcd0, bcd1, bcd2, bcd3, bcd4, bcd5, bcd6, bcd7, bcd8, bcd9};
+    
 
     /*CHIP*/
     chip = gpiod_chip_open("/dev/gpiochip0");
@@ -53,7 +64,7 @@ int main(int argc, char *argv[]){
     printf("REQUEST CONFIG ok\n");
 
     /*LINES SETTINGS*/
-    // 1) BOTÕES
+    // 1) GPIOs como entrada com pull-up e interrupção por borda de descida (botões)
     btns_line_settings = gpiod_line_settings_new();
     if(btns_line_settings == NULL){
         perror("Function'gpiod_line_settings_new' return NULL");
@@ -93,7 +104,7 @@ int main(int argc, char *argv[]){
     }
     printf("btns_line_settings --> EDGE_FALLING ok\n");
 
-    // 2) BCD (0 a 9 em BITS)
+    // 2) GPIOs como saída (BCD para o CI 4511)
     bcd_line_settings = gpiod_line_settings_new();
     if(bcd_line_settings == NULL){
         perror("Function'gpiod_line_settings_new' return NULL");
@@ -150,7 +161,7 @@ int main(int argc, char *argv[]){
         perror("Function'gpiod_line_config_set_output_values' failed");
         gpiod_line_config_free(l_config);
         gpiod_line_settings_free(bcd_line_settings);
-	gpiod_line_settings_free(btns_line_settings);
+	    gpiod_line_settings_free(btns_line_settings);
         gpiod_request_config_free(r_config);
         gpiod_chip_close(chip);
         return 1;
@@ -180,17 +191,17 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-
+    int display_value = 0;
     /*LOOP*/
-    while(count < 10){
+    while(1){
+        printf("display_value = %d\n", display_value);
         // Espera até um novo evento acontecer no kernel
-        printf("Iteração %d\n", count);
-	aux = gpiod_line_request_wait_edge_events(l_request, -1);
+	    aux = gpiod_line_request_wait_edge_events(l_request, -1);
         if(aux < 0){
             perror("Function'gpiod_line_request_wait_edge_events' failed");
             gpiod_edge_event_buffer_free(buffer);
             gpiod_line_config_free(l_config);
-	    gpiod_line_settings_free(bcd_line_settings);
+	        gpiod_line_settings_free(bcd_line_settings);
             gpiod_line_settings_free(btns_line_settings);
             gpiod_request_config_free(r_config);
             gpiod_chip_close(chip);
@@ -202,7 +213,7 @@ int main(int argc, char *argv[]){
             perror("Function'gpiod_line_request_read_edge_events' failed");
             gpiod_edge_event_buffer_free(buffer);
             gpiod_line_config_free(l_config);
-	    gpiod_line_settings_free(bcd_line_settings);
+	        gpiod_line_settings_free(bcd_line_settings);
             gpiod_line_settings_free(btns_line_settings);
             gpiod_request_config_free(r_config);
             gpiod_chip_close(chip);
@@ -215,17 +226,45 @@ int main(int argc, char *argv[]){
         enum gpiod_edge_event_type tipo = gpiod_edge_event_get_event_type(event);   // Ver seu tipo
 
         if (tipo == GPIOD_EDGE_EVENT_FALLING_EDGE) {
-            printf("GPIO %u: FALLING (botão pressionado)\n", offset);
+            // Incrementando
+            if (offset == btns_offset[0] && display_value <= 8){
+                display_value++;
+            }
+            else if (offset == btns_offset[0] && display_value == 9){
+                display_value = 0;
+            }
+            // Decrementando
+            else if (offset == btns_offset[1] && display_value >= 1){
+                display_value--;
+            }
+            else if (offset == btns_offset[1] && display_value == 0){
+                display_value = 9;
+            }
+
+            // Reset
+            else if (offset == btns_offset[2]){
+                display_value = 0;
+            }
         }
 
-        usleep(500000);  // Debounce 500ms = 0,5s
+        aux = gpiod_line_request_set_values_subset(l_request, 4, bcd_offset, bcd[display_value]);
+        if(aux < 0){
+            perror("Function'gpiod_line_request_set_values_subset' failed");
+            gpiod_edge_event_buffer_free(buffer);
+            gpiod_line_config_free(l_config);
+	        gpiod_line_settings_free(bcd_line_settings);
+            gpiod_line_settings_free(btns_line_settings);
+            gpiod_request_config_free(r_config);
+            gpiod_chip_close(chip);
+            return 1;
+        }
+
+        usleep(50000);  // Debounce 50ms
 	
-	// Limpar eventuais eventos acumulados
-	while(gpiod_line_request_wait_edge_events(l_request, 0) > 0){
-		gpiod_line_request_read_edge_events(l_request, buffer, 1);
-	}
-         
-        count ++;
+        // Limpar eventuais eventos acumulados
+        while(gpiod_line_request_wait_edge_events(l_request, 0) > 0){
+            gpiod_line_request_read_edge_events(l_request, buffer, 1);
+        }
     }
 
     /*FREE*/
