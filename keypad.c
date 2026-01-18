@@ -15,16 +15,17 @@ int main(int argc, char *argv[]){
     struct gpiod_line_config *l_config;
     struct gpiod_line_request *l_request;
     struct gpiod_edge_event_buffer *event_buffer;
-    struct gpiod_edge_event *event
+    struct gpiod_edge_event *event;
 
     /*OFFSET*/
-    unsigned int row_offset[4] = {};
-    unsigned int col_offset[3] = {}; 
+    unsigned int row_offset[4] = {2, 3, 4, 17};
+    unsigned int col_offset[3] = {10, 9, 11}; 
 
     /*ENUM*/
-    const enum gpiod_line_value row_initial_values[4] = {GPIO_LINE_VALUE_INACTIVE, GPIO_LINE_VALUE_INACTIVE, GPIO_LINE_VALUE_INACTIVE, GPIO_LINE_VALUE_INACTIVE};
-    enum gpiod_edge_event_type event_type;
+    const enum gpiod_line_value row_initial_values[4] = {GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE, GPIOD_LINE_VALUE_INACTIVE};
+    const enum gpiod_line_value row_all_values_active[4] = {GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_ACTIVE, GPIOD_LINE_VALUE_ACTIVE};
 
+    enum gpiod_edge_event_type event_type;
     /*CHIP*/
     chip = gpiod_chip_open("/dev/gpiochip0");
     if(chip == NULL){
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]){
         gpiod_chip_close(chip);    
         return 1;
     }
-    gpio_request_config_set_consumer(r_config, "keypad");
+    gpiod_request_config_set_consumer(r_config, "keypad");
     printf("REQUEST CONFIG ok\n");
 
     /*LINE SETTINGS*/
@@ -64,7 +65,7 @@ int main(int argc, char *argv[]){
     }
     printf("\tOUTPUT ok\n");
 
-    aux = gpiod_line_settings_set_output_values(row_l_settings, GPIO_LINE_VALUE_INACTIVE);
+    aux = gpiod_line_settings_set_output_value(row_l_settings, GPIOD_LINE_VALUE_INACTIVE);
     if(aux < 0){
         perror("Function 'gpiod_line_settings_set_output_values' failure");
         gpiod_line_settings_free(row_l_settings);
@@ -193,8 +194,28 @@ int main(int argc, char *argv[]){
     }
     printf("EVENT BUFFER ok\n");
 
+
+
+	aux = gpiod_line_request_set_values_subset(l_request, 4, row_offset, row_all_values_active);
+	if (aux < 0){
+            perror("Function 'gpiod_line_request_set_values_subset' failure");
+            gpiod_edge_event_buffer_free(event_buffer);
+            gpiod_line_request_release(l_request);
+            gpiod_line_config_free(l_config);
+            gpiod_line_settings_free(col_l_settings);
+            gpiod_line_settings_free(row_l_settings);
+            gpiod_request_config_free(r_config);
+            gpiod_chip_close(chip); 
+            return 1;
+        }
+	printf("ROW ACTIVES\n");
+
+
+
     /*LOOP*/
     while(1){
+
+	printf("Pressione uma tecla\n");
         // Espera até um novo evento acontecer no kernel (-1) 
         aux = gpiod_line_request_wait_edge_events(l_request, -1);
         if (aux < 0){
@@ -239,13 +260,31 @@ int main(int argc, char *argv[]){
 
         //Processando o evento
         event_type = gpiod_edge_event_get_event_type(event);
-        if(event_type == GPIOD_EDGE_EVENT_FALLING_EDGE){
-            
+	aux = gpiod_edge_event_get_line_offset(event);
+        if (event_type == GPIOD_EDGE_EVENT_FALLING_EDGE){
+            if (aux == 10){
+	    	printf("COLUNA 1\n");
+	    }
+	    else if(aux == 9){
+	    	printf("COLUNA 2\n");
+	    }
+	    else if(aux == 11){
+	    	printf("COLUNA 3\n");
+	    }
         }
 
+	usleep(200000);
 
+	int descartados = 0;
+	// Comsumindo os outros eventos
+	while(gpiod_line_request_wait_edge_events(l_request, 0) >0){
+		int n = gpiod_line_request_read_edge_events(l_request, event_buffer, 10);
+		descartados +=n;
+	}
 
-
+	if (descartados > 0){
+		printf("descartados %d eventos de bounce\n", descartados);
+	}
     }
 
     /*FREE*/
