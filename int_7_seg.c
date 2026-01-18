@@ -7,16 +7,16 @@ int main(int argc, char *argv[]){
 	
 	/***STRUCTS***/
 	struct gpiod_chip *chip;
+	struct gpiod_request_config *rqt_cfg;
 	struct gpiod_line_settings *line_sts_out;
 	struct gpiod_line_settings *line_sts_in;
 	struct gpiod_line_config *line_cfg;
 	struct gpiod_line_request *line_rqt;
-	struct gpiod_request_config *rqt_cfg;
 	struct gpiod_edge_event_buffer *evt_buf;
 
 	/***PINS***/
-	unsigned int display[8] = {2, 3, 4, 17, 27, 22, 10, 9};	// OUTPUT
-	unsigned int button[1] = {26};	// INPUT
+	unsigned int display[7] = {2, 3, 4, 17, 27, 22, 10, };	// OUTPUT
+	unsigned int button[1] = {9};	// INPUT
 
 	/***CHIP***/
 	chip = gpiod_chip_open("/dev/gpiochip0");
@@ -24,6 +24,18 @@ int main(int argc, char *argv[]){
 		perror("gpiod_chip_open return NULL");
 		return 1;
 	}
+
+	/*REQUEST CONFIGURATION*/
+	rqt_cfg = gpiod_request_config_new();
+	if(rqt_cfg == NULL){
+		perror("gpiod_request_config_new return NULL");
+		gpiod_line_config_free(line_cfg);
+		gpiod_line_settings_free(line_sts_in);	
+		gpiod_line_settings_free(line_sts_out);
+		gpiod_chip_close(chip);
+		return 1;
+	}
+	gpiod_request_config_set_consumer(rqt_cfg, "int_7seg");
 
 	/***LINE SETTINGS***/
 	line_sts_out = gpiod_line_settings_new();
@@ -98,18 +110,6 @@ int main(int argc, char *argv[]){
 		gpiod_chip_close(chip);
 		return 1;
 	}
-
-	//REQUEST CONFIGURATION
-	rqt_cfg = gpiod_request_config_new();
-	if(rqt_cfg == NULL){
-		perror("gpiod_request_config_new return NULL");
-		gpiod_line_config_free(line_cfg);
-		gpiod_line_settings_free(line_sts_in);	
-		gpiod_line_settings_free(line_sts_out);
-		gpiod_chip_close(chip);
-		return 1;
-	}
-	gpiod_request_config_set_consumer(rqt_cfg, "int_7seg");
 
 	line_rqt = gpiod_chip_request_lines(chip, rqt_cfg, line_cfg);
 	if(line_rqt < 0){
