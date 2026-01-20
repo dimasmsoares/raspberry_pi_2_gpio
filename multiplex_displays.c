@@ -16,9 +16,9 @@ int main(int argc, char *argv[]){
     struct gpiod_line_request *l_request;
 
     /*OFFSETS*/
-    unsigned int offset_out_bcd = {};
-    unsigned int offset_out_mult = {};
-    unsigned int offset_in_reset = {};
+    unsigned int offset_out_bcd = {27, 22, 10, 9};  // 13, 15, 19, 21
+    unsigned int offset_out_mult = {2, 3, 4, 17};   // 3, 5, 7, 11
+    unsigned int offset_in_reset = {11};            // 23
 
     /*ENUM*/
     const enum gpiod_line_value bcd_table[10][4] = {
