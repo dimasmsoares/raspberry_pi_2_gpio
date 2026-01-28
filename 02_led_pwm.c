@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
 volatile sig_atomic_t running = 1;  // Ver exlicação ao final sobre o SIGINT
 
@@ -99,15 +100,36 @@ int main(){
     printf("LINE REQUEST ✅\n");
 
     printf("WHILE 🔄\n");
-    
-    unsigned int periodo = 10000;
-    unsigned int tempo_on = 0;
-    int led_state = 0;
-    int btn_anterior = 0;
-    int btn_atual = 0;
+    struct timespec ts_on, ts_off;
+    ts_on.tv_sec = 0;
+    ts_off.tv_sec = 0;
+    unsigned int period_ns = 10000000;  // 10ms
 
-    while(running){
-        
+    int count_status = 0;
+
+    int aux = 1;
+    int btn_prev = 1; 
+    int btn_now = 1;
+
+    while(running){ 
+        // Ler o valor do botão
+        btn_now = gpiod_line_request_get_value(line_req, btn_offset[0]);
+        if(btn_prev == 1 && btn_now == 0){   // Botão pressionado
+            if(count_status<4) count_status++;
+            else count_status = 0;
+        }
+
+        // PWM
+        ts_on.tv_nsec = count_status*2500000;
+        ts_off.tv_nsec = period_ns - ts_on.tv_nsec;
+        if(ts_on.tv_nsec > 0){
+            gpiod_line_request_set_value(line_req, led_offset[0], GPIOD_LINE_VALUE_ACTIVE);
+            nanosleep(&ts_on, NULL);
+        }
+        gpiod_line_request_set_value(line_req, led_offset[0], GPIOD_LINE_VALUE_INACTIVE);
+        nanosleep(&ts_off, NULL);
+
+        btn_prev = btn_now;
     }
 
 
@@ -130,4 +152,34 @@ SIGINT --> Signal Interrupt
 
     SIGINT é o sinal que o Linux envia ao seu programa quando você pressiona Ctrl+C, permitindo que ele encerre de forma limpa.
 
+*/
+
+/*
+The nanosleep() function is a POSIX standard system call used in C/C++ programming to suspend the execution of the calling thread with nanosecond precision. 
+Synopsis
+To use nanosleep(), you must include the <time.h> header file. 
+c
+#include <time.h>
+int nanosleep(const struct timespec *req, struct timespec *rem);
+req: A pointer to a struct timespec that specifies the duration of the sleep interval.
+rem: A pointer to a struct timespec where the remaining unslept time will be stored if the function is interrupted by a signal. If you don't need this information, you can pass NULL. 
+The struct timespec is defined as:
+c
+struct timespec {
+    time_t tv_sec;  //seconds
+    long   tv_nsec; // nanoseconds (0 to 999999999)
+};
+The nanosecond value (tv_nsec) must be in the range of 0 to 999,999,999. 
+Description
+The function suspends the calling thread until either: 
+The time interval specified by req has elapsed.
+A signal is delivered to the thread, and its action is to invoke a signal-catching function or terminate the process. 
+Compared to sleep() and usleep(), nanosleep() offers higher resolution and is explicitly specified by POSIX.1 to not interact with signals, making it easier to resume a sleep after an interruption. 
+Return Value
+0: The function returns 0 if the requested time has elapsed successfully.
+-1: The function returns -1 if it is interrupted by a signal or encounters an error, and the global variable errno is set accordingly. 
+Errors
+Common errors include:
+EINTR: The function was interrupted by a signal.
+EINVAL: The tv_nsec field in req was outside the valid range, or tv_sec was negative. 
 */
