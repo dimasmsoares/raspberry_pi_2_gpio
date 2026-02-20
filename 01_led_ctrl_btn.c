@@ -102,7 +102,7 @@ int main(){
     printf("LINE REQUEST ✅\n");
 
     printf("WHILE 🔄\n");
-    
+    printf("\tPressione o botão para ligar o LED\n\tCtrl+C para encerrar...\n");
     while(running){
         // Inicialmente o led começa desligado (0) e o botão em 1 (pull up).
         aux = gpiod_line_request_get_value(line_req, btn_offset[0]);
@@ -126,8 +126,7 @@ int main(){
         }
         usleep(10000);  // 10ms
     }
-
-
+    
     /*FREE*/
     gpiod_line_request_release(line_req);
     gpiod_line_config_free(line_cfg);
@@ -135,6 +134,7 @@ int main(){
     gpiod_line_settings_free(led_line_sets);
     gpiod_request_config_free(req_cfg);
     gpiod_chip_close(chip);
+    printf("END\n");
     return 0;
 }
 
